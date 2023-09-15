@@ -10,7 +10,11 @@ export default function Home() {
   const [patientAge, setPatientAge] = useState<string | null>(null);
   const [patientSex, setPatientSex] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
+  const [labels, setLabels] = useState([]);
+  const handleAddClick = () => {
+    const newLabel = 'label' + Date.now();
+    setLabels(prevLabels => [...prevLabels, newLabel]);
+};
   function parseDicom(arrayBuffer: any) {
 
     const byteArray = new Uint8Array(arrayBuffer);
@@ -22,6 +26,7 @@ export default function Home() {
     const width = dataSet.uint16('x00280010'); // Rows
     const height = dataSet.uint16('x00280011'); // Columns
     const bitsAllocated = dataSet.uint16('x00280100'); // Bits Allocated (e.g., 8, 16)
+    console.log('dataSet',dataSet)
     // 從dataSet提取像素數據
     const pixelDataElement = dataSet.elements.x7fe00010;
     const pixelData = new Uint8Array(dataSet.byteArray.buffer, pixelDataElement.dataOffset, pixelDataElement.length);
@@ -40,6 +45,17 @@ export default function Home() {
           imageData.data[4 * i + 3] = 255;           // A
       }
   }
+  else if (bitsAllocated === 16) {
+    for (let i = 0; i < pixelData.length; i+=2) {
+        const value = (pixelData[i] << 8) | pixelData[i + 1];
+        const normalizedValue = Math.min(255, Math.max(0, Math.round((value / 65535) * 255)));
+        imageData.data[4 * (i/2)] = normalizedValue;      // R
+        imageData.data[4 * (i/2) + 1] = normalizedValue;  // G
+        imageData.data[4 * (i/2) + 2] = normalizedValue;  // B
+        imageData.data[4 * (i/2) + 3] = 255;              // A
+    }
+  }
+
   context.putImageData(imageData, 0, 0);
   const base64Image = canvas.toDataURL();
   setSelectedImage(base64Image);
@@ -89,11 +105,13 @@ export default function Home() {
         </div>
         <div className='bg-blue-500 h-full p-10'>
           <p>Label Tools</p>
-          <Button className="my-3" variant="contained">Add</Button>
+          <Button className="my-3" variant="contained" onClick={handleAddClick}>Add</Button>
           <div>
             <p>Label List</p>
             <ul>
-              <li>label1 </li>
+            {labels.map((label, index) => (
+                        <li key={index}>{index}</li>
+                    ))}
             </ul>
           </div>
         </div>
