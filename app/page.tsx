@@ -6,7 +6,7 @@ import * as dicomParser from 'dicom-parser';
 import React from 'react';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-
+import { fabric } from 'fabric'
 export default function Home() {
   const [patientName, setPatientName] = useState<string | null>(null);
   const [birthDate, setBirthDate] = useState<string | null>(null);
