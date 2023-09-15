@@ -1,8 +1,11 @@
 "use client";
 import Image from 'next/image'
 import Button from '@mui/material/Button';
-import { useState,useEffect,useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as dicomParser from 'dicom-parser';
+import React from 'react';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 export default function Home() {
   const [patientName, setPatientName] = useState<string | null>(null);
@@ -14,11 +17,15 @@ export default function Home() {
   const handleAddClick = () => {
     const newLabel = 'label' + Date.now();
     setLabels(prevLabels => [...prevLabels, newLabel]);
-};
+  }
+
+
+
+
   function parseDicom(arrayBuffer: any) {
 
     const byteArray = new Uint8Array(arrayBuffer);
-    const dataSet:any = dicomParser.parseDicom(byteArray);
+    const dataSet: any = dicomParser.parseDicom(byteArray);
     setPatientName(dataSet.string('x00100010'));
     setBirthDate(dataSet.string('x00100030'));
     setPatientAge(dataSet.string('x00101010'));  // DICOM標籤為病患年齡
@@ -26,64 +33,67 @@ export default function Home() {
     const width = dataSet.uint16('x00280010'); // Rows
     const height = dataSet.uint16('x00280011'); // Columns
     const bitsAllocated = dataSet.uint16('x00280100'); // Bits Allocated (e.g., 8, 16)
-    console.log('dataSet',dataSet)
+    console.log('dataSet', dataSet)
     // 從dataSet提取像素數據
     const pixelDataElement = dataSet.elements.x7fe00010;
     const pixelData = new Uint8Array(dataSet.byteArray.buffer, pixelDataElement.dataOffset, pixelDataElement.length);
 
     // 使用canvas來轉換像素數據為Base64圖像URL
-   const canvas:{} = document.createElement('canvas');
+    const canvas: {} = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const context = canvas.getContext('2d');
     const imageData = context.createImageData(width, height);
     if (bitsAllocated === 8) {
       for (let i = 0; i < pixelData.length; i++) {
-          imageData.data[4 * i] = pixelData[i];      // R
-          imageData.data[4 * i + 1] = pixelData[i];  // G
-          imageData.data[4 * i + 2] = pixelData[i];  // B
-          imageData.data[4 * i + 3] = 255;           // A
+        imageData.data[4 * i] = pixelData[i];      // R
+        imageData.data[4 * i + 1] = pixelData[i];  // G
+        imageData.data[4 * i + 2] = pixelData[i];  // B
+        imageData.data[4 * i + 3] = 255;           // A
       }
-  }
-  else if (bitsAllocated === 16) {
-    for (let i = 0; i < pixelData.length; i+=2) {
+    }
+    else if (bitsAllocated === 16) {
+      for (let i = 0; i < pixelData.length; i += 2) {
         const value = (pixelData[i] << 8) | pixelData[i + 1];
         const normalizedValue = Math.min(255, Math.max(0, Math.round((value / 65535) * 255)));
-        imageData.data[4 * (i/2)] = normalizedValue;      // R
-        imageData.data[4 * (i/2) + 1] = normalizedValue;  // G
-        imageData.data[4 * (i/2) + 2] = normalizedValue;  // B
-        imageData.data[4 * (i/2) + 3] = 255;              // A
+        imageData.data[4 * (i / 2)] = normalizedValue;      // R
+        imageData.data[4 * (i / 2) + 1] = normalizedValue;  // G
+        imageData.data[4 * (i / 2) + 2] = normalizedValue;  // B
+        imageData.data[4 * (i / 2) + 3] = 255;              // A
+      }
     }
+
+    context.putImageData(imageData, 0, 0);
+    const base64Image = canvas.toDataURL();
+    setSelectedImage(base64Image);
   }
 
-  context.putImageData(imageData, 0, 0);
-  const base64Image = canvas.toDataURL();
-  setSelectedImage(base64Image);
+  const removeList =(indexToRemove:number)=>{
+    setLabels(prevLabels => prevLabels.filter((_, index) => index !== indexToRemove));
   }
 
-  
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files && event.target.files[0];
     if (file) {
       const reader = new FileReader();
-        reader.onload = function(event:any) {
-            parseDicom(event.target.result);
-        }
-        reader.readAsArrayBuffer(file);
+      reader.onload = function (event: any) {
+        parseDicom(event.target.result);
+      }
+      reader.readAsArrayBuffer(file);
     }
-    }
-  
-    const canvasRef = useRef(null);
+  }
+
+  const canvasRef = useRef(null);
 
   return (
     <>
       <div className='grid grid-cols-4 h-screen'>
         <div className='bg-red-500 h-full col-span-3 p-10'>
-          <input 
-            type="file" 
-            accept=".dcm" 
-            onChange={handleImageChange} 
-            style={{ display: 'none' }} 
+          <input
+            type="file"
+            accept=".dcm"
+            onChange={handleImageChange}
+            style={{ display: 'none' }}
             id="upload-input"
           />
           <label htmlFor="upload-input">
@@ -96,10 +106,10 @@ export default function Home() {
             <p>Birthday:{birthDate}</p>
             <p>Age:{patientAge}</p>
             <p>Sex:{patientSex}</p>
-            <div style={{position: 'relative'}}>
-            <div className='my-5 bg-slate-500 max-h-[400px] w-full'>
-            {selectedImage && <Image width={400} height={400} src={selectedImage} alt="Uploaded Preview" objectFit="contain" />}
-            </div>
+            <div style={{ position: 'relative' }}>
+              <div className='my-5 bg-slate-500 max-h-[400px] w-full'>
+                {selectedImage && <Image width={400} height={400} src={selectedImage} alt="Uploaded Preview" objectFit="contain" />}
+              </div>
             </div>
           </div>
         </div>
@@ -109,13 +119,13 @@ export default function Home() {
           <div>
             <p>Label List</p>
             <ul>
-            {labels.map((label, index) => (
-                        <li key={index}>{index}</li>
-                    ))}
+              {labels.map((label, index) => (
+                <li key={index}>{label}<EditIcon/><span onClick={() => removeList(index)}><DeleteIcon/></span></li>
+              ))}
             </ul>
           </div>
         </div>
       </div>
     </>
   )
-  }
+}
